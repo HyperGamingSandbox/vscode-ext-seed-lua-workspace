@@ -148,11 +148,70 @@ function activate(context) {
     context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(e => updateStatus(status)));	
     */
 
-    vscode.languages.registerCompletionItemProvider('lua', {
+    /*
+   context.subscriptions.push(
+       vscode.window.onDidChangeActiveTextEditor(
+            function() {
+                console.log('onDidChangeActiveTextEditor')
+            }
+       )
+    );
+*/
+
+    context.subscriptions.push(
+        vscode.window.onDidChangeTextEditorSelection(
+             function() {
+                // rescan file
+             }
+        )
+     );
+    /*
+    window.onDidChangeTextEditorSelection(this._onEvent, this, subscriptions);
+    window.onDidChangeActiveTextEditor(this._onEvent, this, subscriptions);
+    */
+
+   vscode.languages.registerCompletionItemProvider('lua', {
         provideCompletionItems(document, position, token, context) {
             
             console.log(`provideCompletionItems ${position.line} ${position.character}`)
 
+            var words = [ ]
+
+            var line = position.line
+            var pos = position.character
+            var ppos = -1
+            var first = true
+
+            while(true) {
+
+                var r = document.getWordRangeAtPosition(new vscode.Position(line, pos))
+                if(r) {
+                    var word = document.getText(r)
+                    if(first && r.end.character < position.character) {
+                        var fword = document.getText(new vscode.Range(line, r.end.character, line, position.character))
+                        words.unshift(fword)
+
+                    }
+                    first = false
+                    if(ppos != -1) {
+                        var sword = document.getText(new vscode.Range(line, r.end.character, line, ppos))
+                        words.unshift(sword)                        
+                    }
+                    words.unshift(word)
+                    ppos = r.start.character
+                    pos = ppos - 1
+                }
+                else {
+                    pos --
+                }
+
+                if(pos < 0) {
+                    break
+                }
+
+            }
+
+            /*
             const r = document.getWordRangeAtPosition(position)            
 
             var word = ""
@@ -188,10 +247,15 @@ function activate(context) {
 
             }
 
+            
 
             console.log(`complete word '${word1m}','${sign}','${word}'`)
+            */
+           console.log(words)
 
-            return currentCompletionItems
+            return [ ...currentCompletionItems
+            //    , new vscode.CompletionItem(word + '_write', vscode.CompletionItemKind.Method)
+             ]
             /*
             return [
                 // new vscode.CompletionItem('_write', vscode.CompletionItemKind.Method)
