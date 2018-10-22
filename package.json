@@ -14,7 +14,20 @@
         "*"
     ],
     "main": "./extension",
-    "contributes": {
+	"contributes": {
+		"configuration": [
+			{
+				"title": "Seed Engine developer workspace configuration",
+				"properties": {
+					"conf.workspace.cachPath": {
+						"type": "string",						
+						"default": "c:\\tmp",
+                        "description": "Place on disc for cache data",
+                        "scope": "workspace"
+                    }                    
+				}
+			}
+		],
         "commands": []
     },
     "scripts": {
