@@ -560,6 +560,34 @@ async function activate(context) {
     status.text = "SLW scan folders ..."
     await addWSFolders(getWorkspaceFolders())
     
+    // context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(onWorkspaceFoldersChanged) );
+    
+    /*
+	context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(e => updateWorkSpace(status)));
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => this.updateStatus(status)));
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(e => updateStatus(status)));
+    context.subscriptions.push(vscode.window.onDidChangeTextEditorViewColumn(e => updateStatus(status)));
+    context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(e => updateStatus(status)));
+    context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(e => updateStatus(status)));	
+    */
+
+   context.subscriptions.push(vscode.window.onDidChangeTextEditorViewColumn( (e, c) => {
+			console.log('onDidChangeTextEditorViewColumn ' + c);
+		   updateStatus(status)
+   		}
+	));
+    	
+
+    /*
+   context.subscriptions.push(
+       vscode.window.onDidChangeActiveTextEditor(
+            function() {
+                console.log('onDidChangeActiveTextEditor')
+            }
+       )
+    );
+*/
+
     context.subscriptions.push(
         vscode.window.onDidChangeTextEditorSelection(
              function() {
