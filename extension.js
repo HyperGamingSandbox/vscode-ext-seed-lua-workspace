@@ -582,6 +582,13 @@ function activate(context) {
     context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(e => updateStatus(status)));	
     */
 
+   context.subscriptions.push(vscode.window.onDidChangeTextEditorViewColumn( (e, c) => {
+			console.log('onDidChangeTextEditorViewColumn ' + c);
+		   updateStatus(status)
+   		}
+	));
+    	
+
     /*
    context.subscriptions.push(
        vscode.window.onDidChangeActiveTextEditor(
