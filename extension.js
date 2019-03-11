@@ -1,5 +1,9 @@
+
 const vscode = require('vscode');
 const Parser = require("./sourceParser.js").Parser
+const backScaner = require("./backScaner.js")
+const scaner = backScaner.scaner
+const __isword = backScaner.__isword
 
 const util = require('util');
 const fs = require('fs');
@@ -347,18 +351,8 @@ class Module extends DocObject {
 class Modules extends DocObject {
 
     constructor() {
-        super('modules', 'modules')
-        // this.modules = { }
+        super('modules', 'modules')        
     }
-
-    /*
-        getModule(moduleName) {
-        if(!(moduleName in this.modules)) {
-            this.modules[moduleName] = new Module(moduleName)
-        }
-        return this.modules[moduleName]
-    }
-    */
 }
 
 var modules = new Modules()
@@ -367,6 +361,10 @@ var modules = new Modules()
 class ModuleFilenameDetecter {
 
     constructor() {
+        this.reset()
+    }
+
+    reset() {
         this.dirs = { }
         this.packages = { }
     }
@@ -429,13 +427,20 @@ class ModuleFilenameDetecter {
 }
 var moduleFilenameDetecter = new ModuleFilenameDetecter()
 
+var status = null
+var __totalFolder = 0, __treatedFolder = 0
+var __totalFiles = 0, __treatedFiles = 0
+
+function updateStatus() {
+    status.text = "SLW scan sources: folders " + __totalFolder + "/" + __treatedFolder + ", files " + __totalFiles + "/" + __treatedFiles
+}
+
 class Folder {
     constructor(folder) {
         this.folder = folder
         this.run = true
-        this.start()
     }
-
+    
     async start() {
         console.log(`start folder '${this.folder}'`)
         while(this.run) {
@@ -443,6 +448,8 @@ class Folder {
             try {
                 var ctx = { id: 1, modules: modules }
                 var items = await readdirEx(this.folder, { wc: [ 'lua', 'cpp' ], ignoreFolders: [ 'buildtools', '.git', 'x64', 'test' ] })
+                __totalFiles += items.length
+                updateStatus()
                 console.log(`folder ${this.folder} file readed ${items.length}`)
                 // console.log(items)
                 for(var i = 0, l = items.length; i < l; i++) {
@@ -456,6 +463,9 @@ class Folder {
                         modules.add(module)                    
                     }
                     await module.parse(ctx, filepath, content)
+                    __treatedFiles ++
+                    updateStatus()
+    
                     // console.log(`file: ${filepath}`)
                     // console.log(`module: ${module.name}`)
                     
@@ -474,13 +484,35 @@ class Folder {
 var currentCompletionItems = [ ]
 var currentFolders = [ ]
 
-function addWSFolders(folders) {
+async function addWSFolders(folders) {
     // console.log('addWSFolders', folders)
+
+    __totalFolder = currentFolders.length + folders.length
+    status.show()
+    updateStatus()
+
     for(var i = 0, l = folders.length; i < l; i++) {
         var folderPath = folders[i];
         var folder = new Folder(folderPath)
+        await folder.start()
+        __treatedFolder ++
+        updateStatus()
         currentFolders.push(folder)
     }
+
+    setTimeout(function() {
+        status.hide()
+        setTimeout(function() { 
+            modules = new Modules()
+            moduleFilenameDetecter.reset()
+            currentFolders = [ ]
+            __totalFolder = 0
+            __treatedFolder = 0
+            __totalFiles = 0
+            __treatedFiles = 0
+            addWSFolders(getWorkspaceFolders())
+        }, 5000)
+    }, 3000)
     
 }
 
@@ -499,55 +531,6 @@ function getWorkspaceFolders() {
     return wsfolders;
 }
 
-/*
-function onWorkspaceFoldersChanged() {
-    console.log('onWorkspaceFoldersChanged');
-}
-*/
-function __trim(a) {
-    return a.replace(/^\s+|\s+$/g, "")
-}
-
-function __unshift(words, word, symbols) {
-    
-    word = word.replace(/^\s+$/g, " ")
-    if(word == " ") {
-        words.unshift(" ")
-        return
-    }
-    
-    if(symbols) { } else {
-        word = __trim(word)
-    }
-    if(symbols) {
-        word = word.replace(/\s+/g, " ")
-
-        //var a = word.split(" ")
-        //for(var i = a.length - 1; i  >= 0; i--) {
-            //var item = a[i]
-            for(var j = word.length - 1; j >= 0; j--) {
-                var c = word[j]
-                // if(c != ' ') {
-                    words.unshift(c)
-                // }
-            }
-        // }
-    }
-    else {
-        if(word.length > 0) {
-            words.unshift(word)
-        }
-    }
-}
-
-function __isword(word) {
-    // console.log(`'${word}'`)
-    if(word && typeof(word) == "string") {
-        return word.match(/^[a-zA-Z_\d]+$/)
-    }
-    return false
-}
-
 var __keywords = [
     { name: 'local', type: 'operand' }
 ]
@@ -563,35 +546,20 @@ function _typeToCompletionItemKind(type) {
     return null
 }
 
-function activate(context) {
+async function activate(context) {
 
     console.log('started');
 
+	status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+    context.subscriptions.push(status);
+    status.text = "SLW started"
+    status.show()
+
     modules = new Modules()
 
-    addWSFolders(getWorkspaceFolders())
+    status.text = "SLW scan folders ..."
+    await addWSFolders(getWorkspaceFolders())
     
-    // context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(onWorkspaceFoldersChanged) );
-    
-    /*
-	context.subscriptions.push(vscode.workspace.onDidChangeWorkspaceFolders(e => updateWorkSpace(status)));
-    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => this.updateStatus(status)));
-    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(e => updateStatus(status)));
-    context.subscriptions.push(vscode.window.onDidChangeTextEditorViewColumn(e => updateStatus(status)));
-    context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(e => updateStatus(status)));
-    context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(e => updateStatus(status)));	
-    */
-
-    /*
-   context.subscriptions.push(
-       vscode.window.onDidChangeActiveTextEditor(
-            function() {
-                console.log('onDidChangeActiveTextEditor')
-            }
-       )
-    );
-*/
-
     context.subscriptions.push(
         vscode.window.onDidChangeTextEditorSelection(
              function() {
@@ -599,58 +567,15 @@ function activate(context) {
              }
         )
      );
-    /*
-    window.onDidChangeTextEditorSelection(this._onEvent, this, subscriptions);
-    window.onDidChangeActiveTextEditor(this._onEvent, this, subscriptions);
-    */
 
    vscode.languages.registerCompletionItemProvider('lua', {
         provideCompletionItems(document, position, token, context) {
             
-            // console.log(`provideCompletionItems ${position.line} ${position.character}`)
             var retArray = [ ]
 
             try {
 
-            var words = [ ]
-
-            var line = position.line
-            var pos = position.character
-            var ppos = -1
-            var first = true
-
-            while(true) {
-
-                var r = document.getWordRangeAtPosition(new vscode.Position(line, pos))
-                if(r) {
-                    var word = document.getText(r)
-                    if(first && r.end.character < position.character) {
-                        var fword = document.getText(new vscode.Range(line, r.end.character, line, position.character))
-                        __unshift(words, fword, true)
-
-                    }
-                    first = false
-                    if(ppos != -1) {
-                        var sword = document.getText(new vscode.Range(line, r.end.character, line, ppos))
-                        __unshift(words, sword, true)
-                    }
-
-                    __unshift(words, word)
-
-                    ppos = r.start.character
-                    pos = ppos - 1
-                }
-                else {
-                    pos --
-                }
-
-                if(pos < 0) {
-                    break
-                }
-
-            }
-
-            //console.log(words)
+            var words = scaner(document, position)
 
             var newline = [ ]
             var symbol = false
@@ -1004,38 +929,10 @@ function activate(context) {
                 console.log(e)
             }
 
-           console.log("returning")
-
-            return retArray // [ ...currentCompletionItems
-            //    , new vscode.CompletionItem(word + '_write', vscode.CompletionItemKind.Method)
-            // ]
-            /*
-            return [
-                // new vscode.CompletionItem('_write', vscode.CompletionItemKind.Method)
-                // , new vscode.CompletionItem('Hello World!2')
-                // , createSnippetItem()
-            ];
-            */
+            console.log("returning")
+            return retArray
         }
     });
-
-    /*
-    function createSnippetItem() {
-
-        // Read more here:
-        // https://code.visualstudio.com/docs/extensionAPI/vscode-api#CompletionItem
-        // https://code.visualstudio.com/docs/extensionAPI/vscode-api#SnippetString
-
-        // For SnippetString syntax look here:
-        // https://code.visualstudio.com/docs/editor/userdefinedsnippets#_creating-your-own-snippets
-
-        let item = new vscode.CompletionItem('Good part of the day', vscode.CompletionItemKind.Snippet);
-        item.insertText = new vscode.SnippetString("Good ${1|morning,afternoon,evening|}. It is ${1}, right?");
-        item.documentation = new vscode.MarkdownString("Inserts a snippet that lets you select the _appropriate_ part of the day for your greeting.");
-
-        return item;
-    }
-    */
 
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
 
