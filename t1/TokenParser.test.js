@@ -1,43 +1,11 @@
-var { TokenParser, SpaceToken, WordToken  } = require('./TokenParser.js')
+var { TokenParser, SpaceToken, WordToken, SymbolToken, StringToken  } = require('./TokenParser.js')
+var { objectName, deepCompare, arrayCompare, objectCompare } = require('./testutils.js')
 
 var t = (...a) => a.map(i => {
 	var o = new i.class(i.startPosition)	
 	Object.keys(i).forEach( k => { if(k !== 'class') o[k] = i[k] })
 	return o
 })
-
-var objectName = (a) => (a.constructor && a.constructor.name) ? a.constructor.name : null
-var deepCompare, arrayCompare, objectCompare
-
-arrayCompare = (a, b) => {
-	if(!Array.isArray(a) || !Array.isArray(b)) return false
-	if(a.length != b.length) return false
-	for(var i = 0, l = a.length; i < l; i++) {
-		if(!deepCompare(a[i], b[i])) return false
-	}
-	return true
-}
-
-objectCompare = (a,b) => {
-	if( !(a instanceof Object) || !(b instanceof Object) ) return false
-	if( objectName(a) !== objectName(b) ) return false
-	var checked = { }
-	for(var name in a) {
-		if(!deepCompare(a[name], b[name])) return false
-		checked[name] = true
-	}
-	for(var name in b) {
-		if(name in checked) continue
-		if(!deepCompare(a[name], b[name])) return false
-	}
-	return true
-}
-
-deepCompare = (a, b) => {
-	if(Array.isArray(a)) return arrayCompare(a, b)
-	if(a instanceof Object) return objectCompare(a, b)
-	return a === b
-}
 
 var tests = [
 
@@ -47,9 +15,28 @@ var tests = [
 		data: "   asd  ",
 		name: "space and word" },
 
-	{	result: [  ],
+	{	result: [  { class: SpaceToken, startPosition: 0, endPosition: 2 },
+			{ class: WordToken, startPosition: 3, endPosition: 5, word: 'asd' },
+			{ class: SymbolToken, startPosition: 6, endPosition: 6, symbol: '(' },
+			{ class: WordToken, startPosition: 7, endPosition: 9, word: 'asd' },
+			{ class: SymbolToken, startPosition: 10, endPosition: 10, symbol: ')' },
+			{ class: SpaceToken, startPosition: 11, endPosition: 12 } ],
 		data: "   asd(asd)  ",
-		name: "asd123" }
+		name: "symbols" },
+
+	{	result: [ { class: WordToken, startPosition: 0, endPosition: 4, word: 'local' },
+			{ class: SpaceToken, startPosition: 5, endPosition: 5 },
+			{ class: WordToken, startPosition: 6, endPosition: 6, word: 'a' },
+			{ class: SpaceToken, startPosition: 7, endPosition: 7 },
+			{ class: SymbolToken, startPosition: 8, endPosition: 8, symbol: '=' },
+			{ class: SpaceToken, startPosition: 9, endPosition: 9 },
+			{ class: WordToken, startPosition: 10, endPosition: 16, word: 'requier' },
+			{ class: SymbolToken, startPosition: 17, endPosition: 17, symbol: '(' },
+			{ class: StringToken, startPosition: 18, quote: '\'', endPosition: 21, symbol: 'asd' },
+			{ class: SymbolToken, startPosition: 23, endPosition: 23, symbol: ')' } ],
+	data: "local a = requier('asd')",
+	name: "string" }
+		
 ]
 
 for(var i = 0, l = tests.length; i < l; i++) {
@@ -60,7 +47,7 @@ for(var i = 0, l = tests.length; i < l; i++) {
 		console.log(TokenParser.process(test.data))
 		console.log('needed')
 		console.log(t(...test.result))
-		return
+		process.exit()
 	}
 	console.log(` ${(''+(i + 1)).padStart(3, '0')} - ${test.name}`)
 }

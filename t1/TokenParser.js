@@ -1,18 +1,18 @@
 
 class Token {
 
-	constructor(startPosition) {
+	constructor(startPosition, text) {
 		this.startPosition = startPosition
+		this.onInit(text)
 	}
 
 	setEnd(position, text) {
 		this.endPosition = position - 1
-		this.onEnd(text)
+		return this.onEnd(text, position)
 	}
 
-	onEnd() { }
-
-	needSubProcess() { return false }
+	onEnd(text, position) { return position }
+	onInit() { }
 }
 
 
@@ -35,8 +35,9 @@ class WordToken extends Token {
 	isBody(c) {
 		return WordToken.isValid(c)
 	}
-	onEnd(text) {
+	onEnd(text, position) {
 		this.word = text.substr(this.startPosition, this.endPosition - this.startPosition  +1)
+		return position
 	}
 }
 
@@ -50,13 +51,53 @@ WordToken.isValid = (c) => (c >= _a && c <= _z) || (c >= _A && c <= _Z) || c == 
 
 
 
-class WordToken extends Token {	
+var allowedSymbols = { }
+'()='.split('').forEach(s => allowedSymbols[s] = true)
+
+class SymbolToken extends Token {
+	isBody(c) {
+		return false
+	}
+	onEnd(text, position) {
+		this.symbol = text.substr(this.startPosition, this.endPosition - this.startPosition  + 1)
+		return position
+	}
 }
+
+SymbolToken.isValid = (c) => String.fromCharCode(c) in allowedSymbols
+
+
+
+
+const _q1 = '"'.charCodeAt(0)
+const _q2 = "'".charCodeAt(0)
+
+class StringToken extends Token {
+	
+	onInit(text) {
+		if(text) {
+			this.quote = text.substr(this.startPosition, 1)
+		}		
+	}
+
+	isBody(c) {
+		return this.quote.charCodeAt(0) != c
+	}
+
+	onEnd(text, position) {
+		this.symbol = text.substr(this.startPosition + 1, this.endPosition - this.startPosition)
+		return position + 1
+	}
+}
+
+StringToken.isValid = (c) => c == _q1 || c == _q2
 
 
 var validTokens = [
 	SpaceToken,
-	WordToken
+	WordToken,
+	SymbolToken,
+	StringToken
 ]
 
 class TokenParser {
@@ -68,7 +109,7 @@ TokenParser.process = (text) => {
 	var i = 0, l = text.length
 
 	var endToken = () => {
-		currentToken.setEnd(i, text)
+		i = currentToken.setEnd(i, text)
 		tokens.push(currentToken)
 		currentToken = null
 	}
@@ -86,17 +127,9 @@ TokenParser.process = (text) => {
 			for(var i1 = 0, l1 = validTokens.length; i1 < l1; i1++) {
 				var token = validTokens[i1]
 				if(token.isValid(c)) {
-					currentToken = new token(i)
+					currentToken = new token(i, text)
 					break
 				}
-			}
-
-			if(currentToken.needSubProcess()) {
-				var [ newPosition, token ] = currentToken.subProcess(text, i)
-				i = newPosition
-				currentToken = token
-				endToken()
-				continue
 			}
 
 			if(!currentToken) {
@@ -114,4 +147,5 @@ exports.TokenParser = TokenParser
 
 exports.SpaceToken = SpaceToken
 exports.WordToken = WordToken
-
+exports.SymbolToken = SymbolToken
+exports.StringToken = StringToken
