@@ -6,7 +6,14 @@ class LexToken {
 }
 
 class Expression extends LexToken {
+}
 
+//
+// 1. simple expresion
+//
+// variable.call():self(asd)
+
+Expression.detect = (tokens, position) => {
 }
 
 class Equal extends LexToken {
@@ -76,7 +83,37 @@ Equal.detect = (tokens, position) => {
 		// read initializers list
 		stage = 0
 		while(true)	{
+			switch(stage) {
 
+				case 0:
+				token = Expression.detect(tokens, position)
+				if(token) {
+
+				}
+				else {
+					stage = 2
+				}
+				break
+
+				case 1:
+				token = tokens[position]
+				if(token instanceof SpaceToken) {
+
+				}
+				else if (token instanceof SymbolToken) {
+					if (token.symbol == ',') {
+						stage = 0
+					}
+					else {
+						return null
+					}
+				}
+				else {
+					return null
+				}
+				break
+			}
+			if(stage == 2) break
 		}
 
 		return { position: position, token: new Equal(namesList, exps) }
