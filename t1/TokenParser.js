@@ -30,6 +30,8 @@ const _s2 = "\t".charCodeAt(0)
 SpaceToken.isValid = (c) => c == _s1 || c == _s2
 
 
+var operators = {}
+'local,for,end,function,while,break'.split(',').forEach( i => operators[i] = true )
 
 class WordToken extends Token {	
 	isBody(c) {
@@ -37,6 +39,7 @@ class WordToken extends Token {
 	}
 	onEnd(text, position) {
 		this.word = text.substr(this.startPosition, this.endPosition - this.startPosition  +1)
+		if(this.word in operators) this.isOperator = true
 		return position
 	}
 }
@@ -52,13 +55,33 @@ WordToken.isValid = (c) => (c >= _a && c <= _z) || (c >= _A && c <= _Z) || c == 
 
 
 var allowedSymbols = { }
-'()='.split('').forEach(s => allowedSymbols[s] = true)
+'()=,.:<>'.split('').forEach(s => allowedSymbols[s] = true)
 
 class SymbolToken extends Token {
+
+	onInit(text) {
+		if(text) {
+			this.part = text.substr(this.startPosition, 1)
+			this.count = 0
+		}
+	}
+
 	isBody(c) {
+
+		this.count ++
+
+		if(this.count == 1) {
+			var s = String.fromCharCode(c)
+			if(this.part == '=' && s == '=') {
+				return true
+			}
+		}
+
 		return false
 	}
 	onEnd(text, position) {
+		delete this.part
+		delete this.count
 		this.symbol = text.substr(this.startPosition, this.endPosition - this.startPosition  + 1)
 		return position
 	}

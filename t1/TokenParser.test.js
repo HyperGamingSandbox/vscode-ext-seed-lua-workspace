@@ -24,7 +24,7 @@ var tests = [
 		data: "   asd(asd)  ",
 		name: "symbols" },
 
-	{	result: [ { class: WordToken, startPosition: 0, endPosition: 4, word: 'local' },
+	{	result: [ { class: WordToken, startPosition: 0, endPosition: 4, word: 'local', isOperator: true },
 			{ class: SpaceToken, startPosition: 5, endPosition: 5 },
 			{ class: WordToken, startPosition: 6, endPosition: 6, word: 'a' },
 			{ class: SpaceToken, startPosition: 7, endPosition: 7 },
@@ -35,8 +35,14 @@ var tests = [
 			{ class: StringToken, startPosition: 18, quote: '\'', endPosition: 21, symbol: 'asd' },
 			{ class: SymbolToken, startPosition: 23, endPosition: 23, symbol: ')' } ],
 	data: "local a = requier('asd')",
-	name: "string" }
+	name: "string" },
 		
+	{	result: [ { class: SymbolToken, startPosition: 0, endPosition: 0, symbol: '=' },
+			{ class: SpaceToken, startPosition: 1, endPosition: 1 },
+			{ class: SymbolToken, startPosition: 2, endPosition: 3, symbol: '==' } ],
+	data: "= ==",
+	name: "==" }
+
 ]
 
 for(var i = 0, l = tests.length; i < l; i++) {

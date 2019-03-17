@@ -1,170 +1,107 @@
-
 var { TokenParser, SpaceToken, WordToken, SymbolToken, StringToken  } = require('./TokenParser.js')
+var { DocEntity } = require('./DocEntity.js')
 
 class LexToken {
+	constructor() {
 
-}
-
-class Expression extends LexToken {
-}
-
-//
-// 1. simple expresion
-//
-// variable.call():self(asd)
-
-Expression.detect = (tokens, position) => {
-}
-
-class Equal extends LexToken {
-	constructor(namesList, exps) {
-		this.namesList = namesList
-		this.exps = exps
 	}
 }
 
-Equal.detect = (tokens, position) => {
-	var token = tokens[position]
-	if(token instanceof WordToken && token.word == 'local') {
+class LexChain extends LexToken {
+	constructor(token) {
+		super()
+		this.tokens = [ token ]
+	}
+}
 
-		// read name lists
-		var namesList = [ ], exps = [ ]
-		var stage = 0
-		/*
-			stage:
-			0 - read name
-			1 - space or , or = 
-		*/
-		position ++
+LexChain.isStartToken = (token) => {
+	if(token instanceof WordToken && !token.isOperator) {
+		// check for valid documentation entry
+		var docEntity = Lexer.lexer.getDocEntity('Core', token.word)
+		if(docEntity) return true
+		docEntity = Lexer.lexer.getVariable(token.word)
+		if(docEntity) return true
+	}
+	return false
+}
 
-		while(true)	{
-			token = tokens[position]
-			switch(stage) {
+class LexString extends LexToken {
+	constructor(tokens, position) {
+		super()
+		position = position || 0
 
-				case 0:
-					if(token instanceof SpaceToken) {
-
-					}
-					else if (token instanceof WordToken) {
-						namesList.push(token)
-						stage = 1
-					}
-					else {
-						return null
-					}
-
-				break
-
-				case 1:
-				if(token instanceof SpaceToken) {
-
-				}
-				else if (token instanceof SymbolToken) {
-					if(token.symbol == '=') {
-						stage = 2
-					}
-					else if (token.symbol == ',') {
-						stage = 0
-					}
-					else {
-						return null
-					}
-				}
-				else {
-					return null
-				}
-			break
-
-			}			
-			position ++
-			if(stage == 2) break
-		}
-
-		// read initializers list
-		stage = 0
-		while(true)	{
-			switch(stage) {
-
-				case 0:
-				token = Expression.detect(tokens, position)
-				if(token) {
-
-				}
-				else {
-					stage = 2
-				}
-				break
-
-				case 1:
-				token = tokens[position]
-				if(token instanceof SpaceToken) {
-
-				}
-				else if (token instanceof SymbolToken) {
-					if (token.symbol == ',') {
-						stage = 0
-					}
-					else {
-						return null
-					}
-				}
-				else {
-					return null
-				}
+		// 1. isolate () -> LexBlock
+		var processedList = [ ]
+		for(var i = position, l = tokens.length; i < l; i++) {
+			var token = tokens[i]
+			if(token.symbol == '(') {
+				var s = new LexString(tokens, i + 1)
+				i = s.endPosition - 1
+				delete s.endPosition
+				s.isBlock = true
+				processedList.push(s)				
+			}
+			else if(token.symbol == ')') {
+				i ++
 				break
 			}
-			if(stage == 2) break
+			else {
+				processedList.push(token)
+			}
+		}
+		this.endPosition = i
+
+		tokens = this.tokens = processedList
+		processedList = [ ]
+
+		// 2. isolate chains
+		var chain = null
+		for(var i = 0, l = tokens.length; i < l; i++) {
+			var token = tokens[i]
+			if(chain) {
+
+			}
+			else if(chain.isStartToken(token)) {
+				chain = new LexChain(token)
+				tokens.push(token)
+			}
+			else {
+				tokens.push(token)
+			}
 		}
 
-		return { position: position, token: new Equal(namesList, exps) }
+		this.tokens = processedList
 	}
-	return null
-}
-
-class SkipSpace extends LexToken { }
-SkipSpace.detect = (tokens, position) => {
-	if(tokens[position] instanceof SpaceToken) {
-		return { position: position + 1 }
-	}
-	return null
 }
 
 class Lexer {
 
-}
+	constructor() {
+		this.strings = [ ]
 
-var detectTokens = [
-	SkipSpace,
-	Equal
-]
-
-Lexer.process = (tokens, position) => {
-
-	var lextokens = [ ]
-	position = position || 0
-	var l = tokens.length
-
-	while(position < l) {
-		let found = false
-		for(var i = 0, l1 = detectTokens.length; i < l1; i++) {
-			var token = detectTokens[i]
-			var result = token.detect(tokens, position)
-			if(result) {
-				position = result.position
-				if(result.token) {
-					lextokens = result.token
-				}
-				found = true
-				break
-			}
-		}
-		if(!found) {
-			console.log(`can't detect lex token at position ${position}`)
-			break
-		}
 	}
 
-	return lextokens
+	getDocEntity(module, name) {
+
+		return null
+	}
+
+	getVariable(name) {
+		return null
+	}
+
+	processString(text) {
+
+		var tokens = TokenParser.process(text)
+
+		Lexer.lexer = this
+		var s = new LexString(tokens)
+		delete s.endPosition
+		this.strings.push(s)
+	}
+
 }
+
+
 
 exports.Lexer = Lexer
